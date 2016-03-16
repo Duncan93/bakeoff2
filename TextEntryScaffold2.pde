@@ -3,6 +3,8 @@ import java.util.Collections;
 import android.graphics.Rect;
 import java.util.Map;
 import java.util.HashMap;
+import android.text.TextUtils;
+
 
 String[] phrases; //contains all of the phrases
 int totalTrialNum = 4; //the total number of phrases to be tested - set this low for testing. Might be ~10 for the real bakeoff!
@@ -19,7 +21,7 @@ final int DPIofYourDeviceScreen = 424; //you will need to look up the DPI or PPI
 //http://en.wikipedia.org/wiki/List_of_displays_by_pixel_density
 final int sizeOfInputArea = DPIofYourDeviceScreen*1; //aka, 1.0 inches square!
 final int tw = sizeOfInputArea/12; //Used because fractions confuse me
-final int margin = 300;
+final int margin = 200;
 int buttonMarginBottom = tw / 4;
 int buttonMarginHalf = tw / 8;
 //boolean dragging = false;
@@ -34,7 +36,7 @@ String suggestionKey;
 int scrollLoc = 0;
 Rect input = new Rect(
                       margin, 
-                      margin, 
+                      margin , 
                       margin + tw*12, 
                       margin + tw*12
                       );
@@ -54,22 +56,23 @@ Rect rightMask = new Rect(
                           
 Rect delete = new Rect(
                        margin, 
-                       margin, 
+                       margin + tw*10, 
                        margin + tw*6 - buttonMarginHalf, 
-                       margin + tw * 2 - buttonMarginBottom
+                       margin + tw * 12 - buttonMarginBottom
                        );
 Rect space = new Rect(
                       margin + tw * 6 + buttonMarginHalf, 
-                      margin, 
+                      margin + tw*10, 
                       margin + tw * 12, 
-                      margin + tw * 2 - buttonMarginBottom
+                      margin + tw * 12 - buttonMarginBottom
                       );
                       
-Rect auto0 = new Rect(margin, margin + tw*8, margin + tw*6, margin + tw*10);
-Rect auto1 = new Rect(margin + tw*6, margin + tw*8, margin + tw*12, margin +tw*10);
-Rect auto2 = new Rect(margin, margin + tw*10, margin + tw * 6, margin + tw*12);
-Rect auto3 = new Rect(margin + tw*6, margin + tw*10, margin + tw*6, margin + tw*12);
+Rect[] auto = new Rect[4];
 
+
+int numAutocompleteOptions = 4;
+String[] wordlist;
+Autocomplete autocomplete;
 Rect qwertyBox;
 
 Rect[] qwerty = new Rect[26];
@@ -86,9 +89,16 @@ Map<String, char[]> commonLetters = CommonLetters.getCommonLetters();
 //You can modify anything in here. This is just a basic implementation.
 void setup()
 {
+  // draw autocomplete options
+  autocomplete = new Autocomplete(4);
+  autocomplete.addWords(loadStrings("worddata.txt"));
+  auto[0] = new Rect(margin, margin, margin + tw*6, margin + tw*2 - tw/2);
+  auto[1] = new Rect(margin + tw*6, margin, margin + tw*12, margin +tw*2 - tw/2);
+  auto[2] = new Rect(margin, margin + tw*2 - tw/2, margin + tw * 6, margin + tw*3);
+  auto[3] = new Rect(margin + tw*6, margin + tw*2 - tw/2, margin + tw*12, margin + tw*3 ); 
   // draw qwerty keyboard
   int rows = 3;
-  int marginTop = margin + delete.height() + buttonMarginBottom; // change this to move whole qwerty keyboard
+  int marginTop = margin + 2*auto[0].height() + buttonMarginBottom; // change this to move whole qwerty keyboard
   // initialize qwerty drag box based on marginTop (assumes height of 3 * tw*2 + 2 * buttonMarginBottom)
   qwertyBox = new Rect(
                         margin,
@@ -96,7 +106,9 @@ void setup()
                         margin + tw*12,
                         marginTop + 3 * tw*2 + 2 * buttonMarginBottom
                         );
-                        
+  
+  
+  
   int oldMarginLeft = margin - (tw*12/2); 
   int marginLeft = margin - (tw*12/2); 
   int keyCount = 0;
@@ -220,6 +232,12 @@ void draw()
 
     fill(0, 255, 0);
   }
+  //draw autocomplete options
+  textSize(40);
+  for (int i = 0; i < 4; i++) {
+    drawRect(auto[i], #FFFFFF,   autocomplete.currentOptions[i], tw/5 );
+  }
+
   
   drawRect(leftMask, 0);
   drawRect(rightMask, 0);
@@ -301,6 +319,7 @@ void mouseReleased()
      {
        findKeyLetter(i);
        currentTyped += keyLetter;
+       callAutocorrect();
        break;
      }
     }
@@ -324,6 +343,10 @@ void mousePressed()
     }
     //changeActiveLetters();
   }
+  for (int i = 0 ; i < numAutocompleteOptions; i++ ) {
+    if (auto[i].contains(mouseX, mouseY)) addRestOfWord(i);
+  }
+  if (currentTyped.length() > 0) callAutocorrect();
   
   initX = mouseX;
   initY = mouseY;
@@ -335,7 +358,12 @@ void mousePressed()
     nextTrial(); //if so, advance to next trial
   }
 }
-
+void addRestOfWord(int i) {
+  String[] words = currentTyped.split(" ");
+  words[words.length-1] = autocomplete.currentOptions[i];
+  currentTyped = TextUtils.join(" ", words);
+  callAutocorrect();
+}
 int counter = 0;
 
 void mouseDragged() 
@@ -358,7 +386,24 @@ void mouseDragged()
   }
 }
 
+String currentWord(String typed) {
+  if (typed.charAt(typed.length()-1) == ' ') return "";
+  String[] words = typed.split(" ");
+  System.out.println(words[words.length-1]);
+  return words[words.length - 1];
+}
 
+
+void callAutocorrect() {
+  String word = currentWord(currentTyped);
+  if (word != "") {
+    autocomplete.getCompletions(word);
+  } else {
+    for (int i = 0; i < numAutocompleteOptions; i++) {
+      autocomplete.currentOptions[i] = "";
+    }
+  }
+}
 
 void nextTrial()
 {
