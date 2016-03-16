@@ -22,11 +22,13 @@ final int tw = sizeOfInputArea/12; //Used because fractions confuse me
 final int margin = 300;
 int buttonMarginBottom = tw / 4;
 int buttonMarginHalf = tw / 8;
-boolean dragging = false;
+//boolean dragging = false;
+//Instead of boolean, use total distance from press to release to determine if dragged
+float initX, initY;
 
 // comment this out to disable highlighting of suggested next letters
 // only highlights 4 because I haven't written code that writes the entire CommonLetters.java class yet (manually broken up put calls)
-boolean showSuggested = true;
+boolean showSuggested = false;
 String suggestionKey;
 
 int scrollLoc = 0;
@@ -291,7 +293,7 @@ void changeActiveLetters()
 
 void mouseReleased()
 {
-  if (!dragging && !leftMask.contains(mouseX, mouseY) && !rightMask.contains(mouseX, mouseY)) // don't let keys be pressed when they are masked
+  if (dist(mouseX,mouseY,initX,initY) < tw/2 && !leftMask.contains(mouseX, mouseY) && !rightMask.contains(mouseX, mouseY)) // don't let keys be pressed when they are masked
   {
     for (int i = 0; i < qwerty.length; i++)
     {
@@ -303,7 +305,6 @@ void mouseReleased()
      }
     }
   }
-  dragging = false;
 }
 
 void mousePressed()
@@ -323,19 +324,10 @@ void mousePressed()
     }
     //changeActiveLetters();
   }
-  // only type if we're done dragging
-  if (!dragging)
-  {
-    //for (int i = 0; i < qwerty.length; i++)
-    //{
-    //  if (qwerty[i].contains(mouseX, mouseY))
-    //  {
-    //    findKeyLetter(i);
-    //    currentTyped += keyLetter;
-    //    break;
-    //  }
-    //}
-  }
+  
+  initX = mouseX;
+  initY = mouseY;
+ 
 
   //You are allowed to have a next button outside the 2" area
   if (didMouseClick(800, 00, 200, 200)) //check if click is in next button
@@ -363,7 +355,6 @@ void mouseDragged()
         qwerty[i].right += difference;
       }
     }
-    dragging = true;
   }
 }
 
